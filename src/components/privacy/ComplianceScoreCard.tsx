@@ -12,24 +12,51 @@ const PAD_Y = 24;
 export function ComplianceScoreCard() {
   const [range, setRange] = useState<TimeRange>("month");
   const [open, setOpen] = useState(false);
+
   const points = getScoreTrend(range);
+
   const [active, setActive] = useState(points.length - 1);
+
   const index = Math.min(active, points.length - 1);
 
   const geometry = useMemo(() => {
     const scores = points.map((p) => p.score);
+
     const min = Math.min(...scores) - 6;
     const max = Math.max(...scores) + 6;
+
     const coords = points.map((p, i) => ({
-      x: PAD_X + (i * (W - PAD_X * 2)) / Math.max(points.length - 1, 1),
-      y: PAD_Y + (1 - (p.score - min) / (max - min)) * (H - PAD_Y * 2),
+      x:
+        PAD_X +
+        (i * (W - PAD_X * 2)) /
+          Math.max(points.length - 1, 1),
+
+      y:
+        PAD_Y +
+        (1 - (p.score - min) / (max - min)) *
+          (H - PAD_Y * 2),
     }));
-    const line = coords.map((c, i) => `${i === 0 ? "M" : "L"}${c.x} ${c.y}`).join(" ");
+
+    const line = coords
+      .map(
+        (c, i) =>
+          `${i === 0 ? "M" : "L"}${c.x} ${c.y}`,
+      )
+      .join(" ");
+
     const area = `${line} L${coords[coords.length - 1].x} ${H} L${coords[0].x} ${H} Z`;
-    return { coords, line, area };
+
+    return {
+      coords,
+      line,
+      area,
+    };
   }, [points]);
 
-  const delta = points[points.length - 1].score - points[0].score;
+  const delta =
+    points[points.length - 1].score -
+    points[0].score;
+
   const activePoint = points[index];
   const activeCoord = geometry.coords[index];
 
@@ -44,9 +71,20 @@ export function ComplianceScoreCard() {
               onClick={() => setOpen((v) => !v)}
               className="inline-flex items-center gap-1.5 rounded-full bg-secondary px-3.5 py-1.5 text-xs font-medium text-foreground"
             >
-              {TIME_RANGES.find((r) => r.value === range)?.label}
-              <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+              {
+                TIME_RANGES.find(
+                  (r) => r.value === range,
+                )?.label
+              }
+
+              <ChevronDown
+                className={cn(
+                  "h-3.5 w-3.5 transition-transform",
+                  open && "rotate-180",
+                )}
+              />
             </button>
+
             {open && (
               <div className="absolute right-0 z-20 mt-2 w-40 overflow-hidden rounded-2xl bg-popover p-1.5 shadow-[var(--shadow-lift)] ring-1 ring-border">
                 {TIME_RANGES.map((r) => (
@@ -55,12 +93,17 @@ export function ComplianceScoreCard() {
                     type="button"
                     onClick={() => {
                       setRange(r.value);
-                      setActive(getScoreTrend(r.value).length - 1);
+
+                      setActive(
+                        getScoreTrend(r.value).length - 1,
+                      );
+
                       setOpen(false);
                     }}
                     className={cn(
                       "block w-full rounded-xl px-3 py-2 text-left text-xs font-medium transition-colors hover:bg-secondary",
-                      r.value === range && "text-primary",
+                      r.value === range &&
+                        "text-primary",
                     )}
                   >
                     {r.label}
@@ -71,9 +114,10 @@ export function ComplianceScoreCard() {
           </div>
         }
       />
+
       <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-muted-foreground">
-        Track how your organization&apos;s DPDP compliance posture changes as processes are scanned
-        and remediated
+        Track how your organization&apos;s DPDP compliance posture
+        changes as processes are scanned and remediated
       </p>
 
       <div className="relative mt-6">
@@ -85,12 +129,32 @@ export function ComplianceScoreCard() {
           aria-label="Compliance score trend"
         >
           <defs>
-            <linearGradient id="scoreFill" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.22" />
-              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+            <linearGradient
+              id="scoreFill"
+              x1="0"
+              y1="0"
+              x2="0"
+              y2="1"
+            >
+              <stop
+                offset="0%"
+                stopColor="var(--primary)"
+                stopOpacity="0.22"
+              />
+
+              <stop
+                offset="100%"
+                stopColor="var(--primary)"
+                stopOpacity="0"
+              />
             </linearGradient>
           </defs>
-          <path d={geometry.area} fill="url(#scoreFill)" />
+
+          <path
+            d={geometry.area}
+            fill="url(#scoreFill)"
+          />
+
           <path
             d={geometry.line}
             fill="none"
@@ -100,13 +164,18 @@ export function ComplianceScoreCard() {
             strokeLinejoin="round"
             vectorEffect="non-scaling-stroke"
           />
+
           {geometry.coords.map((c, i) => (
             <circle
               key={points[i].date}
               cx={c.x}
               cy={c.y}
               r={i === index ? 5 : 3}
-              fill={i === index ? "var(--primary)" : "var(--card)"}
+              fill={
+                i === index
+                  ? "var(--primary)"
+                  : "var(--card)"
+              }
               stroke="var(--primary)"
               strokeWidth="2"
               vectorEffect="non-scaling-stroke"
@@ -118,11 +187,17 @@ export function ComplianceScoreCard() {
 
         <div
           className="pointer-events-none absolute -translate-x-1/2 -translate-y-full"
-          style={{ left: `${(activeCoord.x / W) * 100}%`, top: `${(activeCoord.y / H) * 100 - 6}%` }}
+          style={{
+            left: `${(activeCoord.x / W) * 100}%`,
+            top: `${(activeCoord.y / H) * 100 - 6}%`,
+          }}
         >
           <div className="rounded-xl bg-foreground px-2.5 py-1 text-[11px] font-semibold text-background shadow-[var(--shadow-lift)]">
             {activePoint.score}%
-            <span className="ml-1.5 font-normal opacity-70">{activePoint.label}</span>
+
+            <span className="ml-1.5 font-normal opacity-70">
+              {activePoint.label}
+            </span>
           </div>
         </div>
       </div>
@@ -134,12 +209,15 @@ export function ComplianceScoreCard() {
               {delta >= 0 ? "+" : ""}
               {delta}%
             </span>
+
             <TrendingUp className="h-5 w-5 shrink-0 text-risk-low" />
           </div>
+
           <p className="mt-1 text-sm text-muted-foreground">
             Compliance score improved since last scan
           </p>
         </div>
+
         <div className="flex shrink-0 items-center gap-2">
           {points.map((p, i) => (
             <button
@@ -149,7 +227,9 @@ export function ComplianceScoreCard() {
               onClick={() => setActive(i)}
               className={cn(
                 "h-2.5 rounded-full transition-all",
-                i === index ? "w-6 bg-primary" : "w-2.5 bg-border hover:bg-primary/40",
+                i === index
+                  ? "w-6 bg-primary"
+                  : "w-2.5 bg-border hover:bg-primary/40",
               )}
             />
           ))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { TopNav } from "@/components/privacy/TopNav";
 import { ComplianceScoreCard } from "@/components/privacy/ComplianceScoreCard";
@@ -6,17 +6,18 @@ import { ProcessesCard } from "@/components/privacy/ProcessesCard";
 import { FindingsCard } from "@/components/privacy/FindingsCard";
 import { UrgencyCard } from "@/components/privacy/UrgencyCard";
 import { RemediationCard } from "@/components/privacy/RemediationCard";
+import { fetchProcesses, analyzeProcess } from "@/lib/privacy-data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PrivacyAudit AI — DPDP Compliance Dashboard" },
+      { title: "Privexa — DPDP Compliance Dashboard" },
       {
         name: "description",
         content:
           "Track DPDP compliance scores, data processing activities, high-risk findings and remediation progress in one clean audit dashboard.",
       },
-      { property: "og:title", content: "PrivacyAudit AI — DPDP Compliance Dashboard" },
+      { property: "og:title", content: "Privexa — DPDP Compliance Dashboard" },
       {
         property: "og:description",
         content:
@@ -32,21 +33,33 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const [scanning, setScanning] = useState(false);
   const [lastScan, setLastScan] = useState("Today, 09:42 IST");
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  const handleRescan = () => {
+  const handleRescan = useCallback(async () => {
     if (scanning) return;
     setScanning(true);
-    // Mock scan — swap for a real API call later.
-    setTimeout(() => {
-      setScanning(false);
+    try {
+      const processes = await fetchProcesses();
+      for (const p of processes) {
+        await analyzeProcess({
+          id: p.id,
+          name: p.name,
+          purpose: p.purpose,
+          dataTypes: p.dataTypes,
+        });
+      }
       setLastScan("Just now");
-    }, 1500);
-  };
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error("Re-scan failed:", err);
+    } finally {
+      setScanning(false);
+    }
+  }, [scanning]);
 
   return (
     <div className="min-h-screen bg-background">
       <TopNav scanning={scanning} onRescan={handleRescan} />
-
       <main className="mx-auto max-w-[1440px] px-5 py-8 lg:px-8">
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between">
           <div className="min-w-0">
@@ -59,25 +72,23 @@ function Dashboard() {
             5 processes monitored
           </span>
         </div>
-
         <div className="mt-6 grid grid-cols-1 gap-5 lg:grid-cols-5">
           <div className="lg:col-span-3">
             <ComplianceScoreCard />
           </div>
-          <div className="lg:col-span-2">
-            <ProcessesCard />
+          <div id="data-flows" className="lg:col-span-2">
+            <ProcessesCard refreshKey={refreshKey} />
           </div>
         </div>
-
         <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-10">
-          <div className="lg:col-span-4">
-            <FindingsCard />
+          <div id="reports" className="lg:col-span-4">
+            <FindingsCard refreshKey={refreshKey} />
           </div>
           <div className="lg:col-span-2">
             <UrgencyCard />
           </div>
-          <div className="lg:col-span-4">
-            <RemediationCard />
+          <div id="remediation" className="lg:col-span-4">
+            <RemediationCard refreshKey={refreshKey} />
           </div>
         </div>
       </main>

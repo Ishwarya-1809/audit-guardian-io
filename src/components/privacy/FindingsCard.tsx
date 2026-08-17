@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ChevronDown, Send, Wrench } from "lucide-react";
 import { Card, CardHeader, SeeAll } from "./primitives";
-import { findings, mockAssistantReply, type Finding, type RiskLevel } from "@/lib/privacy-data";
+import { fetchFindings, sendChatMessage, type Finding, type RiskLevel } from "@/lib/privacy-data";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -19,18 +19,27 @@ const dot: Record<RiskLevel, string> = {
 function FindingChat({ finding }: { finding: Finding }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
 
-  const send = (e: React.FormEvent) => {
+  const send = async (e: React.FormEvent) => {
     e.preventDefault();
     const q = draft.trim();
-    if (!q) return;
+    if (!q || sending) return;
     const stamp = Date.now();
-    setMessages((m) => [
-      ...m,
-      { id: `u${stamp}`, role: "user", text: q },
-      { id: `a${stamp}`, role: "assistant", text: mockAssistantReply(finding, q) },
-    ]);
+    setMessages((m) => [...m, { id: `u${stamp}`, role: "user", text: q }]);
     setDraft("");
+    setSending(true);
+    try {
+      const reply = await sendChatMessage(finding.id, q);
+      setMessages((m) => [...m, { id: `a${stamp}`, role: "assistant", text: reply }]);
+    } catch {
+      setMessages((m) => [
+        ...m,
+        { id: `a${stamp}`, role: "assistant", text: "Sorry, I couldn't reach the server. Try again in a moment." },
+      ]);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -59,18 +68,21 @@ function FindingChat({ finding }: { finding: Finding }) {
             </div>
           ))
         )}
+        {sending && <p className="text-xs italic text-muted-foreground">Thinking...</p>}
       </div>
       <form onSubmit={send} className="mt-2 flex items-center gap-2">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="Type your question..."
-          className="h-9 min-w-0 flex-1 rounded-full bg-card px-3.5 text-xs outline-none ring-primary/40 placeholder:text-muted-foreground focus:ring-2"
+          disabled={sending}
+          className="h-9 min-w-0 flex-1 rounded-full bg-card px-3.5 text-xs outline-none ring-primary/40 placeholder:text-muted-foreground focus:ring-2 disabled:opacity-60"
         />
         <button
           type="submit"
           aria-label="Send"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90"
+          disabled={sending}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
         >
           <Send className="h-4 w-4" />
         </button>
@@ -79,12 +91,36 @@ function FindingChat({ finding }: { finding: Finding }) {
   );
 }
 
-export function FindingsCard() {
+export function FindingsCard({ refreshKey = 0 }: { refreshKey?: number }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [findings, setFindings] = useState<Finding[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetchFindings()
+      .then((data) => {
+        setFindings(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Could not load findings. Backend may be waking up — try refreshing shortly.");
+        setLoading(false);
+      });
+  }, [refreshKey]);
 
   return (
     <Card className="flex flex-col">
       <CardHeader title="High-Risk Findings" action={<SeeAll />} />
+      {loading && <p className="mt-3 text-xs text-muted-foreground">Loading findings...</p>}
+      {error && <p className="mt-3 text-xs text-risk-high">{error}</p>}
+      {!loading && !error && findings.length === 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          No findings yet — run a re-scan to generate some.
+        </p>
+      )}
       <ul className="mt-3 divide-y divide-border/70">
         {findings.map((f) => {
           const expanded = openId === f.id;

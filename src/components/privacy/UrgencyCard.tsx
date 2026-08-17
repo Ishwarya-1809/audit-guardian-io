@@ -1,7 +1,12 @@
 import { ArrowRight, CalendarClock } from "lucide-react";
-import { DAYS_TO_ENFORCEMENT, ENFORCEMENT_DATE } from "@/lib/privacy-data";
+import {
+  getDaysToEnforcement,
+  ENFORCEMENT_DATE,
+} from "@/lib/privacy-data";
 
 export function UrgencyCard() {
+  const daysRemaining = getDaysToEnforcement();
+
   return (
     <section
       className="flex flex-col justify-between rounded-3xl p-6 text-primary-foreground shadow-[var(--shadow-lift)]"
@@ -12,13 +17,17 @@ export function UrgencyCard() {
           <CalendarClock className="h-3.5 w-3.5" />
           Phase 3
         </span>
+
         <h2 className="mt-4 text-2xl font-semibold leading-snug tracking-tight">
-          {DAYS_TO_ENFORCEMENT} days to Phase 3 enforcement
+          {daysRemaining} days to Phase 3 enforcement
         </h2>
+
         <p className="mt-2 text-sm leading-relaxed text-primary-foreground/80">
-          Full DPDP Act enforcement begins {ENFORCEMENT_DATE} — get your organization audit-ready
+          Full DPDP Act enforcement begins {ENFORCEMENT_DATE} — get your
+          organization audit-ready
         </p>
       </div>
+
       <button
         type="button"
         className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-primary-foreground px-4 py-2.5 text-sm font-semibold text-primary transition-opacity hover:opacity-90"

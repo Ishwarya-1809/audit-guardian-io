@@ -1,27 +1,51 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Banknote, ChevronDown, Fingerprint, Headphones, Megaphone, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardHeader, RiskPill, SeeAll, TagPill } from "./primitives";
-import { processes } from "@/lib/privacy-data";
+import { fetchProcesses, type ProcessActivity } from "@/lib/privacy-data";
 import { cn } from "@/lib/utils";
 
-const icons: Record<string, { Icon: LucideIcon; tone: string }> = {
-  p1: { Icon: Fingerprint, tone: "bg-risk-high-soft text-risk-high" },
-  p2: { Icon: Banknote, tone: "bg-accent text-accent-foreground" },
-  p3: { Icon: Megaphone, tone: "bg-risk-medium-soft text-risk-medium" },
-  p4: { Icon: Headphones, tone: "bg-secondary text-secondary-foreground" },
-  p5: { Icon: Users, tone: "bg-risk-low-soft text-risk-low" },
-};
+const ICON_CYCLE: { Icon: LucideIcon; tone: string }[] = [
+  { Icon: Fingerprint, tone: "bg-risk-high-soft text-risk-high" },
+  { Icon: Banknote, tone: "bg-accent text-accent-foreground" },
+  { Icon: Megaphone, tone: "bg-risk-medium-soft text-risk-medium" },
+  { Icon: Headphones, tone: "bg-secondary text-secondary-foreground" },
+  { Icon: Users, tone: "bg-risk-low-soft text-risk-low" },
+];
 
-export function ProcessesCard() {
+export function ProcessesCard({ refreshKey = 0 }: { refreshKey?: number }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [processes, setProcesses] = useState<ProcessActivity[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    fetchProcesses()
+      .then((data) => {
+        setProcesses(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setError("Could not load processes. Backend may be waking up — try again in a moment.");
+        setLoading(false);
+      });
+  }, [refreshKey]);
 
   return (
     <Card className="flex flex-col">
       <CardHeader title="Data Processing Activities" action={<SeeAll />} />
+      {loading && (
+        <p className="mt-3 text-xs text-muted-foreground">Loading processes...</p>
+      )}
+      {error && <p className="mt-3 text-xs text-risk-high">{error}</p>}
+      {!loading && !error && processes.length === 0 && (
+        <p className="mt-3 text-xs text-muted-foreground">No processes found.</p>
+      )}
       <ul className="mt-3 divide-y divide-border/70">
-        {processes.map((p) => {
-          const { Icon, tone } = icons[p.id];
+        {processes.map((p, index) => {
+          const { Icon, tone } = ICON_CYCLE[index % ICON_CYCLE.length];
           const expanded = openId === p.id;
           return (
             <li key={p.id} className="py-3.5">
