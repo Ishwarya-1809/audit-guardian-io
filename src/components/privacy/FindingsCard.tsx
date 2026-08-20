@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Send, Wrench } from "lucide-react";
-import { Card, CardHeader, SeeAll } from "./primitives";
-import { fetchFindings, sendChatMessage, type Finding, type RiskLevel } from "@/lib/privacy-data";
+import {
+  ChevronDown,
+  Send,
+  Wrench,
+  X,
+} from "lucide-react";
+import { Card, CardHeader } from "./primitives";
+import {
+  fetchFindings,
+  sendChatMessage,
+  type Finding,
+  type RiskLevel,
+} from "@/lib/privacy-data";
 import { cn } from "@/lib/utils";
 
 interface ChatMessage {
@@ -23,19 +33,44 @@ function FindingChat({ finding }: { finding: Finding }) {
 
   const send = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const q = draft.trim();
+
     if (!q || sending) return;
+
     const stamp = Date.now();
-    setMessages((m) => [...m, { id: `u${stamp}`, role: "user", text: q }]);
+
+    setMessages((m) => [
+      ...m,
+      {
+        id: `u${stamp}`,
+        role: "user",
+        text: q,
+      },
+    ]);
+
     setDraft("");
     setSending(true);
+
     try {
       const reply = await sendChatMessage(finding.id, q);
-      setMessages((m) => [...m, { id: `a${stamp}`, role: "assistant", text: reply }]);
+
+      setMessages((m) => [
+        ...m,
+        {
+          id: `a${stamp}`,
+          role: "assistant",
+          text: reply,
+        },
+      ]);
     } catch {
       setMessages((m) => [
         ...m,
-        { id: `a${stamp}`, role: "assistant", text: "Sorry, I couldn't reach the server. Try again in a moment." },
+        {
+          id: `a${stamp}`,
+          role: "assistant",
+          text: "Sorry, I couldn't reach the server. Try again in a moment.",
+        },
       ]);
     } finally {
       setSending(false);
@@ -47,6 +82,7 @@ function FindingChat({ finding }: { finding: Finding }) {
       <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
         Ask about this finding
       </p>
+
       <div className="mt-2 max-h-56 space-y-2.5 overflow-y-auto px-1">
         {messages.length === 0 ? (
           <p className="py-4 text-center text-xs text-muted-foreground">
@@ -54,7 +90,15 @@ function FindingChat({ finding }: { finding: Finding }) {
           </p>
         ) : (
           messages.map((m) => (
-            <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+            <div
+              key={m.id}
+              className={cn(
+                "flex",
+                m.role === "user"
+                  ? "justify-end"
+                  : "justify-start",
+              )}
+            >
               <p
                 className={cn(
                   "max-w-[85%] text-xs leading-relaxed",
@@ -68,9 +112,18 @@ function FindingChat({ finding }: { finding: Finding }) {
             </div>
           ))
         )}
-        {sending && <p className="text-xs italic text-muted-foreground">Thinking...</p>}
+
+        {sending && (
+          <p className="text-xs italic text-muted-foreground">
+            Thinking...
+          </p>
+        )}
       </div>
-      <form onSubmit={send} className="mt-2 flex items-center gap-2">
+
+      <form
+        onSubmit={send}
+        className="mt-2 flex items-center gap-2"
+      >
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -78,6 +131,7 @@ function FindingChat({ finding }: { finding: Finding }) {
           disabled={sending}
           className="h-9 min-w-0 flex-1 rounded-full bg-card px-3.5 text-xs outline-none ring-primary/40 placeholder:text-muted-foreground focus:ring-2 disabled:opacity-60"
         />
+
         <button
           type="submit"
           aria-label="Send"
@@ -91,86 +145,248 @@ function FindingChat({ finding }: { finding: Finding }) {
   );
 }
 
-export function FindingsCard({ refreshKey = 0 }: { refreshKey?: number }) {
+function FindingRow({
+  finding,
+  expanded,
+  onToggle,
+}: {
+  finding: Finding;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <li className="border-b border-border/70 py-3.5 last:border-b-0">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        onClick={onToggle}
+        className="flex w-full items-start gap-3 text-left"
+      >
+        <span
+          className={cn(
+            "grid h-9 w-9 shrink-0 place-items-center rounded-full text-[11px] font-bold",
+            dot[finding.severity],
+          )}
+        >
+          {finding.severity === "high"
+            ? "H"
+            : finding.severity === "medium"
+              ? "M"
+              : "L"}
+        </span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium leading-snug">
+            {finding.title}
+          </span>
+
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {finding.section} · {finding.process}
+          </span>
+        </span>
+
+        <ChevronDown
+          className={cn(
+            "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+            expanded && "rotate-180",
+          )}
+        />
+      </button>
+
+      {expanded && (
+        <div className="mt-3 pl-12">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {finding.explanation}
+          </p>
+
+          <p className="mt-2.5 flex items-start gap-2 text-xs leading-relaxed">
+            <Wrench className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+
+            <span>
+              <span className="font-semibold">
+                Suggested fix:{" "}
+              </span>
+              {finding.suggestedFix}
+            </span>
+          </p>
+
+          <FindingChat finding={finding} />
+        </div>
+      )}
+    </li>
+  );
+}
+
+export function FindingsCard({
+  refreshKey = 0,
+}: {
+  refreshKey?: number;
+}) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [showAll, setShowAll] = useState(false);
+  const [modalOpenId, setModalOpenId] = useState<string | null>(null);
+
   useEffect(() => {
     setLoading(true);
     setError(null);
+
     fetchFindings()
       .then((data) => {
         setFindings(data);
         setLoading(false);
       })
       .catch(() => {
-        setError("Could not load findings. Backend may be waking up — try refreshing shortly.");
+        setError(
+          "Could not load findings. Backend may be waking up — try refreshing shortly.",
+        );
         setLoading(false);
       });
   }, [refreshKey]);
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader title="High-Risk Findings" action={<SeeAll />} />
-      {loading && <p className="mt-3 text-xs text-muted-foreground">Loading findings...</p>}
-      {error && <p className="mt-3 text-xs text-risk-high">{error}</p>}
-      {!loading && !error && findings.length === 0 && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          No findings yet — run a re-scan to generate some.
-        </p>
-      )}
-      <ul className="mt-3 divide-y divide-border/70">
-        {findings.map((f) => {
-          const expanded = openId === f.id;
-          return (
-            <li key={f.id} className="py-3.5">
+    <>
+      <Card className="flex flex-col">
+        <CardHeader
+          title="High-Risk Findings"
+          action={
+            <button
+              type="button"
+              onClick={() => setShowAll(true)}
+              className="text-sm font-medium text-primary transition-opacity hover:opacity-70"
+            >
+              See all
+            </button>
+          }
+        />
+
+        {loading && (
+          <p className="mt-3 text-xs text-muted-foreground">
+            Loading findings...
+          </p>
+        )}
+
+        {error && (
+          <p className="mt-3 text-xs text-risk-high">
+            {error}
+          </p>
+        )}
+
+        {!loading &&
+          !error &&
+          findings.length === 0 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              No findings yet — run a re-scan to generate some.
+            </p>
+          )}
+
+        <ul className="mt-3 divide-y divide-border/70">
+          {findings.map((f) => {
+            const expanded = openId === f.id;
+
+            return (
+              <FindingRow
+                key={f.id}
+                finding={f}
+                expanded={expanded}
+                onToggle={() =>
+                  setOpenId(
+                    expanded ? null : f.id,
+                  )
+                }
+              />
+            );
+          })}
+        </ul>
+      </Card>
+
+      {showAll && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
+          onClick={() => {
+            setShowAll(false);
+            setModalOpenId(null);
+          }}
+        >
+          <div
+            className="flex max-h-[85vh] w-full max-w-3xl flex-col overflow-hidden rounded-3xl bg-background shadow-2xl ring-1 ring-border"
+            onClick={(event) =>
+              event.stopPropagation()
+            }
+          >
+            <div className="flex items-center justify-between border-b border-border px-6 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-foreground">
+                  All High-Risk Findings
+                </h2>
+
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {findings.length} finding
+                  {findings.length === 1 ? "" : "s"} identified
+                </p>
+              </div>
+
               <button
                 type="button"
-                aria-expanded={expanded}
-                onClick={() => setOpenId(expanded ? null : f.id)}
-                className="flex w-full items-start gap-3 text-left"
+                onClick={() => {
+                  setShowAll(false);
+                  setModalOpenId(null);
+                }}
+                aria-label="Close findings"
+                className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
-                <span
-                  className={cn(
-                    "grid h-9 w-9 shrink-0 place-items-center rounded-full text-[11px] font-bold",
-                    dot[f.severity],
-                  )}
-                >
-                  {f.severity === "high" ? "H" : f.severity === "medium" ? "M" : "L"}
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium leading-snug">{f.title}</span>
-                  <span className="mt-1 block text-xs text-muted-foreground">
-                    {f.section} · {f.process}
-                  </span>
-                </span>
-                <ChevronDown
-                  className={cn(
-                    "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                    expanded && "rotate-180",
-                  )}
-                />
+                <X className="h-5 w-5" />
               </button>
+            </div>
 
-              {expanded && (
-                <div className="mt-3 pl-12">
-                  <p className="text-xs leading-relaxed text-muted-foreground">{f.explanation}</p>
-                  <p className="mt-2.5 flex items-start gap-2 text-xs leading-relaxed">
-                    <Wrench className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                    <span>
-                      <span className="font-semibold">Suggested fix: </span>
-                      {f.suggestedFix}
-                    </span>
-                  </p>
-                  <FindingChat finding={f} />
-                </div>
+            <div className="overflow-y-auto px-6">
+              {findings.length === 0 ? (
+                <p className="py-8 text-center text-sm text-muted-foreground">
+                  No findings available.
+                </p>
+              ) : (
+                <ul className="divide-y divide-border/70">
+                  {findings.map((finding) => {
+                    const expanded =
+                      modalOpenId === finding.id;
+
+                    return (
+                      <FindingRow
+                        key={finding.id}
+                        finding={finding}
+                        expanded={expanded}
+                        onToggle={() =>
+                          setModalOpenId(
+                            expanded
+                              ? null
+                              : finding.id,
+                          )
+                        }
+                      />
+                    );
+                  })}
+                </ul>
               )}
-            </li>
-          );
-        })}
-      </ul>
-    </Card>
+            </div>
+
+            <div className="flex justify-end border-t border-border px-6 py-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAll(false);
+                  setModalOpenId(null);
+                }}
+                className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

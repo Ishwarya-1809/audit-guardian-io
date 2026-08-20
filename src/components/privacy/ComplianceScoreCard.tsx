@@ -1,7 +1,16 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, TrendingUp } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  TrendingUp,
+} from "lucide-react";
 import { Card, CardHeader } from "./primitives";
-import { getScoreTrend, TIME_RANGES, type TimeRange } from "@/lib/privacy-data";
+import {
+  getScoreTrend,
+  TIME_RANGES,
+  type TimeRange,
+} from "@/lib/privacy-data";
 import { cn } from "@/lib/utils";
 
 const W = 640;
@@ -59,6 +68,16 @@ export function ComplianceScoreCard() {
 
   const activePoint = points[index];
   const activeCoord = geometry.coords[index];
+
+  const goPrevious = () => {
+    setActive((current) => Math.max(current - 1, 0));
+  };
+
+  const goNext = () => {
+    setActive((current) =>
+      Math.min(current + 1, points.length - 1),
+    );
+  };
 
   return (
     <Card className="flex flex-col">
@@ -121,6 +140,38 @@ export function ComplianceScoreCard() {
       </p>
 
       <div className="relative mt-6">
+        {/* Left navigation arrow */}
+        <button
+          type="button"
+          onClick={goPrevious}
+          disabled={index === 0}
+          aria-label="Previous compliance score"
+          className={cn(
+            "absolute left-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 shadow-sm ring-1 ring-border transition-all",
+            index === 0
+              ? "cursor-not-allowed opacity-30"
+              : "hover:bg-secondary hover:shadow-md",
+          )}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+
+        {/* Right navigation arrow */}
+        <button
+          type="button"
+          onClick={goNext}
+          disabled={index === points.length - 1}
+          aria-label="Next compliance score"
+          className={cn(
+            "absolute right-1 top-1/2 z-10 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-background/90 shadow-sm ring-1 ring-border transition-all",
+            index === points.length - 1
+              ? "cursor-not-allowed opacity-30"
+              : "hover:bg-secondary hover:shadow-md",
+          )}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+
         <svg
           viewBox={`0 0 ${W} ${H}`}
           preserveAspectRatio="none"
